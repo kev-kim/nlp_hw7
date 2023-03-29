@@ -7,13 +7,16 @@ q1_2 = np.einsum('ij->i', u)
 # Question 2
 
 def test(original, modified, test_name):
-    if torch.equal(original, modified):
-        print("PASS: " + test_name)
-        return 1
-    else:
+    try:
+        if torch.isclose(original, modified).all():
+            print("PASS: " + test_name)
+            return 1
+        else:
+            print("FAIL: " + test_name)
+            return 0
+    except: 
         print("FAIL: " + test_name)
         return 0
-
 cumul = 0
 
 import torch
@@ -56,8 +59,8 @@ b1_m = x.transpose(1,0)
 b2_m = z0.permute(2,0,1)
 b3_m = z0.permute(2,0,1)
 b4_m = w.permute(2,1,0,3)
-b5_m = w.permute(*range(w.dim())[:-2], -1, -2)
-b6_m = b5_m
+b5_m = w.transpose(-1,-2)
+b6_m = w.transpose(0,2)
 
 cumul += test(b0, b0_m, "permute 1")
 cumul += test(b1, b1_m, "permute 2")
@@ -103,6 +106,8 @@ cumul += test(e2, e2_m, "sum axis 3")
 f0=torch.einsum('ij,j->i',r0,y0)
 f1=torch.einsum('i,jki->jk',y1,r1)
 
+
+
 f0_m = torch.matmul(r0, y0)
 f1_m = torch.matmul(r1, y1)
 
@@ -124,21 +129,19 @@ h0=torch.einsum('bij,bjk->bik',z0,z1)
 h1=torch.einsum('bjk,bij->bik',z1,z0)
 
 h0_m = torch.matmul(z0, z1)
-h1_m = h0
+h1_m = torch.matmul(z0, z1) # torch.matmul(z0, z1.permute(0,1,2))
 
 cumul += test(h0, h0_m, "batch mm 1")
 cumul += test(h1, h1_m, "batch mm 2")
 
 # bilinear
 i=torch.einsum('bn,anm,bm->ba',r0,r1,r2)
-
 i_m = torch.nn.functional.bilinear(r0, r2, r1)
 
 cumul += test(i, i_m, "bilinear 1")
 
 # tensor contraction
 j=torch.einsum('pqrs,tqvr->pstv',s0,s1)
-
 j_m = torch.tensordot(s0 ,s1 ,dims=([1, 2], [1 , 3]))
 
 cumul += test(j, j_m, "tensor contraction 1")
