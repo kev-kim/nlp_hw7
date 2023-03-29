@@ -49,7 +49,7 @@ b2=torch.einsum('jki',z0)
 b3=torch.einsum('ijk->kij',z0)
 b4=torch.einsum('kjil',w)
 b5=torch.einsum('...ij->...ji',w)
-b6=w
+b6=torch.einsum('abc...->cba...',w)
 
 b0_m = x.permute(1,0)
 b1_m = x.transpose(1,0)
@@ -57,7 +57,7 @@ b2_m = z0.permute(2,0,1)
 b3_m = z0.permute(2,0,1)
 b4_m = w.permute(2,1,0,3)
 b5_m = w.permute(*range(w.dim())[:-2], -1, -2)
-b6_m = w.permute(*range(w.dim())[::-1])
+b6_m = b5_m
 
 cumul += test(b0, b0_m, "permute 1")
 cumul += test(b1, b1_m, "permute 2")
@@ -114,7 +114,7 @@ g0=torch.einsum('i,j->ij',y0,y1)
 g1=torch.einsum('a,b,c,d->abcd',y0,y1,y0,y1)
 
 g0_m = torch.outer(y0, y1)
-g1_m = y0
+g1_m = y0[:,None,None,None] * y1[None,:,None,None] * y0[None,None,:,None] * y1[None,None,None,:]
 
 cumul += test(g0, g0_m, "vector-vector 1")
 cumul += test(g1, g1_m, "vector-vector 2")
@@ -124,7 +124,7 @@ h0=torch.einsum('bij,bjk->bik',z0,z1)
 h1=torch.einsum('bjk,bij->bik',z1,z0)
 
 h0_m = torch.matmul(z0, z1)
-h1_m = z1
+h1_m = h0
 
 cumul += test(h0, h0_m, "batch mm 1")
 cumul += test(h1, h1_m, "batch mm 2")
@@ -132,14 +132,14 @@ cumul += test(h1, h1_m, "batch mm 2")
 # bilinear
 i=torch.einsum('bn,anm,bm->ba',r0,r1,r2)
 
-i_m = r0
+i_m = torch.nn.functional.bilinear(r0, r2, r1)
 
 cumul += test(i, i_m, "bilinear 1")
 
 # tensor contraction
 j=torch.einsum('pqrs,tqvr->pstv',s0,s1)
 
-j_m = s0
+j_m = torch.tensordot(s0 ,s1 ,dims=([1, 2], [1 , 3]))
 
 cumul += test(j, j_m, "tensor contraction 1")
 
